@@ -5,6 +5,7 @@ import { DataSource } from "typeorm";
 import { setUpAppListeners } from "./listeners";
 import { IConfig, TKoa, TRouter } from "./types";
 import { Server } from "http";
+import cors from "@koa/cors";
 
 export class ProgImage {
   private app!: TKoa;
@@ -28,6 +29,7 @@ export class ProgImage {
     this.app.context.db = this.db;
     this.app.context.config = this.config;
     setUpAppListeners(this.app);
+    this.app.use(cors());
   }
 
   start = async () => {
@@ -39,11 +41,5 @@ export class ProgImage {
   getDb = () => this.db;
   close = () => {
     this.server.unref();
-    // this.server.on("close", () => {
-    //   console.log("server close event");
-    // });
-    // this.server.close(() => {
-    //   console.log("server closing callback");
-    // });
   };
 }

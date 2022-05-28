@@ -13,6 +13,8 @@ import body from "koa-body";
 import path from "path";
 import { v4 as uuid } from "uuid";
 import { Next } from "koa";
+// @ts-ignore
+import pngToJpeg from "png-to-jpeg";
 
 export const getRoutes = (uploadDir: string) => {
   const routes = new Router<IAppState, IAppContext>();
@@ -27,8 +29,7 @@ export const getRoutes = (uploadDir: string) => {
       multipart: true,
       urlencoded: true,
     }),
-    saveImages,
-    convertImage
+    saveImages
   );
 
   routes.get("/image/:id", extractImageInfo, renderImageInfo);
@@ -66,36 +67,16 @@ async function saveImages(ctx: TKoa["context"], next: Next) {
     next();
   }
 }
-async function convertImage(ctx: TKoa["context"], next: Next) {
-  for (const image of (ctx.images || []).values()) {
-    const filePath = path.resolve(__dirname, ctx.config.uploadsDir, image.id);
-    switch (image.fileType) {
-      case EMimeTypes.png: {
-        ctx.app.emit(EConvertTypeExtension.png_to_jpeg, image, filePath, ctx);
-      }
-      default:
-    }
-  }
-}
-
-async function renderImageInfo(ctx: TKoa["context"], next: Next) {
-  const filePath = path.resolve(
-    ctx.config?.uploadsDir || "",
-    ctx.image?.id || ""
-  );
-  if (ctx.config?.uploadsDir && fs.existsSync(filePath)) {
-    ctx.type = ctx.image?.fileType as string;
-    ctx.body = fs.createReadStream(filePath);
-  } else {
-    ctx.status = 404;
-  }
-}
 
 async function extractImageInfo(ctx: TKoa["context"], next: Next) {
   const { id } = ctx.params;
 
   const reference = id.split(".")[0];
   const type = id.split(".")[1];
+  if (!type) {
+    ctx.status = 404;
+    return;
+  }
 
   let image = await ctx.db.manager.findOne(ImageTracker, {
     where: { reference, fileType: type },
@@ -105,21 +86,61 @@ async function extractImageInfo(ctx: TKoa["context"], next: Next) {
     image = await ctx.db.manager.findOne(ImageTracker, {
       where: { reference },
     });
-    if (image) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      image = await ctx.db.manager.findOne(ImageTracker, {
-        where: { reference, fileType: type },
-      });
-      if (!image) {
-        ctx.status = 404;
-        return;
-      }
-    } else {
+    if (!image) {
+      console.log("no image");
       ctx.status = 404;
       return;
     }
   }
+  ctx.state = { reference, typeNeeded: type, image };
   ctx.image = image;
-
-  next();
+  await next();
+}
+async function renderImageInfo(ctx: TKoa["context"], next: Next) {
+  const filePath = path.resolve(
+    ctx.config?.uploadsDir || "",
+    ctx.image?.id || ""
+  );
+  if (
+    ctx.image?.fileType == ctx.state.typeNeeded &&
+    ctx.config?.uploadsDir &&
+    fs.existsSync(filePath)
+  ) {
+    ctx.type = ctx.image?.fileType as string;
+    ctx.body = fs.createReadStream(filePath);
+  } else {
+    const output = await convertImageAndRender(ctx);
+    if (!output) {
+      ctx.status = 404;
+      return;
+    }
+    ctx.type = ctx.state.typeNeeded;
+    ctx.body = output;
+  }
+}
+async function convertImageAndRender(ctx: TKoa["context"]) {
+  const filePath = path.resolve(
+    __dirname,
+    ctx.config.uploadsDir,
+    ctx.image?.id || ""
+  );
+  let file;
+  if (fs.existsSync(filePath)) {
+    file = fs.readFileSync(filePath);
+  } else {
+    ctx.status = 500;
+    return;
+  }
+  switch (ctx.image?.fileType) {
+    case EMimeTypes.png: {
+      switch (ctx.state.typeNeeded) {
+        case EMimeTypes.jpeg: {
+          return await pngToJpeg({ quality: 90 })(file);
+        }
+      }
+      break;
+    }
+    default:
+      return null;
+  }
 }
