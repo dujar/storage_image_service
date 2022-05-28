@@ -27,63 +27,56 @@ export const getRoutes = (uploadDir: string) => {
       multipart: true,
       urlencoded: true,
     }),
-    async (ctx, next) => {
-      const images = [];
-      const resp = [];
-      for (const k in ctx.request.files || {}) {
-        const file: any = (ctx.request.files || {})[k];
-        if (!file) {
-          continue;
-        }
-        const type = file.mimetype;
-        if (!type) {
-          continue;
-        }
-
-        const imageTracker = new ImageTracker();
-        imageTracker.id = file.newFilename;
-        imageTracker.reference = uuid();
-        imageTracker.fileType = type.split("/")[1];
-
-        await ctx.db.manager.getRepository(ImageTracker).save(imageTracker);
-        resp.push({
-          id: imageTracker.reference,
-          extensionType: imageTracker.fileType,
-        });
-        images.push(imageTracker);
-      }
-      ctx.images = images;
-      ctx.body = resp;
-      if (images.length > 0) {
-        next();
-      }
-    },
-    async (ctx) => {
-      for (const image of (ctx.images || []).values()) {
-        const filePath = path.resolve(
-          __dirname,
-          ctx.config.uploadsDir,
-          image.id
-        );
-        switch (image.fileType) {
-          case EMimeTypes.png: {
-            ctx.app.emit(
-              EConvertTypeExtension.png_to_jpeg,
-              image,
-              filePath,
-              ctx
-            );
-          }
-          default:
-        }
-      }
-    }
+    saveImages,
+    convertImage
   );
 
   routes.get("/image/:id", extractImageInfo, renderImageInfo);
 
   return routes;
 };
+async function saveImages(ctx: TKoa["context"], next: Next) {
+  const images = [];
+  const resp = [];
+  for (const k in ctx.request.files || {}) {
+    const file: any = (ctx.request.files || {})[k];
+    if (!file) {
+      continue;
+    }
+    const type = file.mimetype;
+    if (!type) {
+      continue;
+    }
+
+    const imageTracker = new ImageTracker();
+    imageTracker.id = file.newFilename;
+    imageTracker.reference = uuid();
+    imageTracker.fileType = type.split("/")[1];
+
+    await ctx.db.manager.getRepository(ImageTracker).save(imageTracker);
+    resp.push({
+      id: imageTracker.reference,
+      extensionType: imageTracker.fileType,
+    });
+    images.push(imageTracker);
+  }
+  ctx.images = images;
+  ctx.body = resp;
+  if (images.length > 0) {
+    next();
+  }
+}
+async function convertImage(ctx: TKoa["context"], next: Next) {
+  for (const image of (ctx.images || []).values()) {
+    const filePath = path.resolve(__dirname, ctx.config.uploadsDir, image.id);
+    switch (image.fileType) {
+      case EMimeTypes.png: {
+        ctx.app.emit(EConvertTypeExtension.png_to_jpeg, image, filePath, ctx);
+      }
+      default:
+    }
+  }
+}
 
 async function renderImageInfo(ctx: TKoa["context"], next: Next) {
   const filePath = path.resolve(
