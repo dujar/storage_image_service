@@ -21,6 +21,9 @@ const saveImage = async (
 };
 
 export const setUpAppListeners = (app: TKoa) => {
+  setupPngToJegConverter(app);
+};
+function setupPngToJegConverter(app: TKoa) {
   app.on(
     EConvertTypeExtension.png_to_jpeg,
     async (image: ImageTracker, filePath: string, ctx: TKoa["context"]) => {
@@ -42,4 +45,4 @@ export const setUpAppListeners = (app: TKoa) => {
       await saveImage(image.reference, EMimeTypes.jpeg, id, ctx);
     }
   );
-};
+}

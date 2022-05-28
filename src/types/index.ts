@@ -1,14 +1,14 @@
 import type { DataSource, DataSourceOptions } from "typeorm";
 import type { ImageTracker } from "../db";
 import type Koa from "koa";
-import type Router from "@koa/router";
+import Router, { RouterContext } from "@koa/router";
 
 export interface IConfig {
   uploadsDir: string;
   port?: number;
   db?: Partial<DataSourceOptions>;
 }
-export interface IAppContext {
+export interface IAppContext extends RouterContext {
   db: DataSource;
   image?: ImageTracker;
   images?: ImageTracker[];

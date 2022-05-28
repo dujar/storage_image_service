@@ -1,11 +1,18 @@
 import Router from "@koa/router";
 import { ImageTracker } from "./db";
-import { IAppState, IAppContext, EMimeTypes } from "./types";
+import {
+  IAppState,
+  IAppContext,
+  EMimeTypes,
+  TRouter,
+  TKoa,
+  EConvertTypeExtension,
+} from "./types";
 import fs from "fs";
 import body from "koa-body";
 import path from "path";
 import { v4 as uuid } from "uuid";
-import { EConvertTypeExtension } from "./types/index";
+import { Next } from "koa";
 
 export const getRoutes = (uploadDir: string) => {
   const routes = new Router<IAppState, IAppContext>();
@@ -73,53 +80,53 @@ export const getRoutes = (uploadDir: string) => {
     }
   );
 
-  routes.get(
-    "/image/:id",
-    async (ctx, next) => {
-      const { id } = ctx.params;
-
-      const reference = id.split(".")[0];
-      const type = id.split(".")[1];
-
-      let image = await ctx.db.manager.findOne(ImageTracker, {
-        where: { reference, fileType: type },
-      });
-
-      if (!image) {
-        image = await ctx.db.manager.findOne(ImageTracker, {
-          where: { reference },
-        });
-        if (image) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          image = await ctx.db.manager.findOne(ImageTracker, {
-            where: { reference, fileType: type },
-          });
-          if (!image) {
-            ctx.status = 404;
-            return;
-          }
-        } else {
-          ctx.status = 404;
-          return;
-        }
-      }
-      ctx.image = image;
-
-      next();
-    },
-    async (ctx) => {
-      const filePath = path.resolve(
-        ctx.config?.uploadsDir || "",
-        ctx.image?.id || ""
-      );
-      if (ctx.config?.uploadsDir && fs.existsSync(filePath)) {
-        ctx.type = ctx.image?.fileType as string;
-        ctx.body = fs.createReadStream(filePath);
-      } else {
-        ctx.status = 404;
-      }
-    }
-  );
+  routes.get("/image/:id", extractImageInfo, renderImageInfo);
 
   return routes;
 };
+
+async function renderImageInfo(ctx: TKoa["context"], next: Next) {
+  const filePath = path.resolve(
+    ctx.config?.uploadsDir || "",
+    ctx.image?.id || ""
+  );
+  if (ctx.config?.uploadsDir && fs.existsSync(filePath)) {
+    ctx.type = ctx.image?.fileType as string;
+    ctx.body = fs.createReadStream(filePath);
+  } else {
+    ctx.status = 404;
+  }
+}
+
+async function extractImageInfo(ctx: TKoa["context"], next: Next) {
+  const { id } = ctx.params;
+
+  const reference = id.split(".")[0];
+  const type = id.split(".")[1];
+
+  let image = await ctx.db.manager.findOne(ImageTracker, {
+    where: { reference, fileType: type },
+  });
+
+  if (!image) {
+    image = await ctx.db.manager.findOne(ImageTracker, {
+      where: { reference },
+    });
+    if (image) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      image = await ctx.db.manager.findOne(ImageTracker, {
+        where: { reference, fileType: type },
+      });
+      if (!image) {
+        ctx.status = 404;
+        return;
+      }
+    } else {
+      ctx.status = 404;
+      return;
+    }
+  }
+  ctx.image = image;
+
+  next();
+}
