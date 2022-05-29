@@ -13,8 +13,7 @@ import body from "koa-body";
 import path from "path";
 import { v4 as uuid } from "uuid";
 import { Next } from "koa";
-// @ts-ignore
-import pngToJpeg from "png-to-jpeg";
+import sharp from "sharp";
 
 export const getRoutes = (uploadDir: string) => {
   const routes = new Router<IAppState, IAppContext>();
@@ -114,7 +113,8 @@ async function renderImageInfo(ctx: TKoa["context"], next: Next) {
       ctx.status = 404;
       return;
     }
-    ctx.type = ctx.state.typeNeeded;
+    console.log("passed image output", output);
+
     ctx.body = output;
   }
 }
@@ -124,23 +124,20 @@ async function convertImageAndRender(ctx: TKoa["context"]) {
     ctx.config.uploadsDir,
     ctx.image?.id || ""
   );
-  let file;
-  if (fs.existsSync(filePath)) {
-    file = fs.readFileSync(filePath);
-  } else {
+  if (!fs.existsSync(filePath)) {
+    console.log("did not find it");
     ctx.status = 500;
     return;
   }
-  switch (ctx.image?.fileType) {
-    case EMimeTypes.png: {
-      switch (ctx.state.typeNeeded) {
-        case EMimeTypes.jpeg: {
-          return await pngToJpeg({ quality: 90 })(file);
-        }
+  if (EMimeTypes[ctx.state.typeNeeded as EMimeTypes]) {
+    if (EMimeTypes[ctx.image?.fileType as EMimeTypes]) {
+      const options: any = { quality: 100 };
+      if (ctx.state.typeNeeded === EMimeTypes.jpeg) {
       }
-      break;
+      return sharp(filePath)
+        [EMimeTypes[ctx.state.typeNeeded as EMimeTypes]](options)
+        .toBuffer();
     }
-    default:
-      return null;
   }
+  return false;
 }

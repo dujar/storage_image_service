@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import FormData from "form-data";
 import { ImageTracker } from "../db";
+import sharp from "sharp";
 
 const testPort = 4002;
 const dir = path.resolve(__dirname, "../../testUploads");
@@ -98,7 +99,64 @@ describe("getImage", () => {
     expect(image).toBeTruthy();
   });
 
-  // test("ffmeg conversion test from png to jpoeg", async()=>{
+  test("sharp conversion test from png to jpoeg", async () => {
+    removeFile("pink.jpeg");
+    sharp(fs.readFileSync(filePath("pink.png")))
+      .jpeg({
+        quality: 100,
+      })
+      .toBuffer()
+      .then((data) => {
+        fs.writeFileSync(filePath("pink.jpeg"), data);
+      });
+  });
 
-  // })
+  test("sharp conversion test from png to webp", async () => {
+    removeFile("pink.webp");
+    sharp(fs.readFileSync(filePath("pink.png")))
+      .webp({ quality: 100 })
+      .toBuffer()
+      .then((data) => {
+        fs.writeFileSync(filePath("pink.webp"), data);
+      });
+  });
+
+  test("sharp conversion test from png to avif", async () => {
+    removeFile("pink.avif");
+    sharp(fs.readFileSync(filePath("pink.png")))
+      .avif({ quality: 100 })
+      .toBuffer()
+      .then((data) => {
+        fs.writeFileSync(filePath("pink.avif"), data);
+      });
+  });
+
+  test("sharp conversion test from png to gif", async () => {
+    removeFile("pink.gif");
+    sharp(fs.readFileSync(filePath("pink.png")))
+      .gif({})
+      .toBuffer()
+      .then((data) => {
+        fs.writeFileSync(filePath("pink.gif"), data);
+      });
+  });
+
+  test("sharp conversion test from png to tiff", async () => {
+    removeFile("pink.tiff");
+    sharp(fs.readFileSync(filePath("pink.png")))
+      .tiff({ quality: 100 })
+      .toBuffer()
+      .then((data) => {
+        fs.writeFileSync(filePath("pink.tiff"), data);
+      });
+  });
 });
+
+function filePath(name: string) {
+  return path.resolve(__dirname, name);
+}
+function removeFile(f: string) {
+  if (fs.existsSync(filePath(f))) {
+    fs.rmSync(filePath(f));
+  }
+}

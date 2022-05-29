@@ -24,6 +24,9 @@ export enum EMimeTypes {
   jpeg = "jpeg",
   gif = "gif",
   png = "png",
+  // tiff = "tiff",
+  // avif = "avif",
+  webp = "webp",
 }
 
 export enum EConvertTypeExtension {

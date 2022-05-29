@@ -2,7 +2,6 @@ import Koa from "koa";
 import { getRoutes } from "./routes";
 import { createDB } from "./db";
 import { DataSource } from "typeorm";
-import { setUpAppListeners } from "./listeners";
 import { IConfig, TKoa, TRouter } from "./types";
 import { Server } from "http";
 import cors from "@koa/cors";
@@ -28,7 +27,6 @@ export class ProgImage {
     this.router = getRoutes(config.uploadsDir);
     this.app.context.db = this.db;
     this.app.context.config = this.config;
-    setUpAppListeners(this.app);
     this.app.use(cors());
   }
 
