@@ -1,10 +1,11 @@
 # IMAGE STORAGE PROVIDER
 
 ProgImage service stores images currently  in uploads folder with its mime type extension found in db.
-currently converts png to jpeg  if upload of image performed with png.
+supports reading JPEG, PNG, WebP, GIF, 
 
-current supported conversion if file was uploaded with png
-png --> jpeg
+as for AVIF, TIFF and SVG images, it has not yet been tested but should be able to read store and read only without converting to these extensions.
+
+Output images can be in JPEG, PNG, WebP, GIF, AVIF and TIFF formats as well as uncompressed raw pixel data as the library used is [sharp](https://sharp.pixelplumbing.com/)
 
 
 endpoints:
@@ -17,7 +18,7 @@ nodejs > 14.00
 yarn
 ## HOW TO RUN
 ### setup
-run this at the beginning and run it again if the tests failed.
+run this at the beginning and run it again if the tests fail
 ```yarn setup```
 ### tests
 ```yarn test```
@@ -30,9 +31,6 @@ run this at the beginning and run it again if the tests failed.
 
 ### features to improve
 
-- cors
-- add more conversions.
 - have only one file type such as webp stored. 
-- file name ids saved to be same length
 - authentication with bearer if service needs to be private
 
